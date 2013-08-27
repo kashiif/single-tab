@@ -1,0 +1,6 @@
+content single-tab __version__/chrome/content/
+
+locale	single-tab	en-US	__version__/chrome/locale/en-US/
+
+skin	single-tab	single-tab-skin	__version__/chrome/skin/
+

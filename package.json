@@ -1,0 +1,10 @@
+{
+  "name": "single-tab",
+  "version": "0.1.0",
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-contrib-copy": "~0.4.1",
+    "grunt-regex-replace": "~0.2.5",
+    "grunt-contrib-compress": "~0.5.2"
+  }
+}
