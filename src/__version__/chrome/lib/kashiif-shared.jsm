@@ -11,14 +11,6 @@ var EXPORTED_SYMBOLS = ['utils', 'xulUtils', 'domUtils', 'chromeUtils', 'dateUti
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
-//<!-- build:remove -->
-'use strict';
-var EXPORTED_SYMBOLS = ['chromeUtils'];
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-//<!-- endbuild -->
 
 function _getDir(dirType) {
 	var dirService = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties);
@@ -63,16 +55,14 @@ var chromeUtils = {
   getFuelApplicationService: function() {
     return Cc["@mozilla.org/fuel/application;1"].getService(Ci.fuelIApplication);
   },
+  
+  makeURI: function(aURL, aOriginCharset, aBaseURI) {
+    var ioService = Components.classes["@mozilla.org/network/io-service;1"]
+                    .getService(Components.interfaces.nsIIOService);
+    return ioService.newURI(aURL, aOriginCharset, aBaseURI);
+  },
 
 };
-//<!-- build:remove -->
-'use strict';
-var EXPORTED_SYMBOLS = ['dateUtils'];
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-//<!-- endbuild -->
 
 var dateUtils = {
   /***************************************************************
@@ -104,14 +94,6 @@ var dateUtils = {
     return s;
   }
 };
-//<!-- build:remove -->
-'use strict';
-var EXPORTED_SYMBOLS = ['domUtils'];
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-//<!-- endbuild -->
 
 var domUtils = {
   /***************************************
@@ -199,14 +181,6 @@ var domUtils = {
 	},
 
 };
-//<!-- build:remove -->
-'use strict';
-var EXPORTED_SYMBOLS = ['logger'];
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-//<!-- endbuild -->
 
 var gConsoleService = null;
 
@@ -227,14 +201,6 @@ var logger = {
 		gConsoleService.logStringMessage(msg);
 	},
 };
-//<!-- build:remove -->
-'use strict';
-var EXPORTED_SYMBOLS = ['utils'];
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-//<!-- endbuild -->
 /*
 var PR_Open_Flags = {
   PR_RDONLY:      0x01, //Open for reading only.
@@ -439,15 +405,6 @@ var utils = {
 
   },
 };
-//<!-- build:remove -->
-'use strict';
-var EXPORTED_SYMBOLS = ['xulUtils'];
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-//<!-- endbuild -->
 
 var xulUtils = {
   /*****************************************************
@@ -459,5 +416,34 @@ var xulUtils = {
                 .getService(Ci.nsIWindowMediator)
                 .getMostRecentWindow('navigator:browser');
 	},
+  
+  findTabForURI: function(linkURI, ignorePound) {
+    var tab, tabURI, browser;
+    
+    var browserEnumerator = Cc['@mozilla.org/appshell/window-mediator;1']
+                        .getService(Ci.nsIWindowMediator)
+                        .getEnumerator('navigator:browser');
+
+    while(browserEnumerator.hasMoreElements()) {
+
+      try {
+        browser = browserEnumerator.getNext().gBrowser;
+        for(var j = 0; browser && j < browser.mTabs.length; j++) {
+          tab = browser.mTabs[j],
+          tabURI = tab.linkedBrowser.currentURI;
+          
+          Cu.reportError("checking " + (tabURI == linkURI)  + " " + tabURI );
+          //TODO: see if there is a pound symbol
+          if(tabURI && tabURI == linkURI) {
+            return tab;
+          }
+        }
+      } catch(e) {
+        Cu.reportError(e);
+      }
+    }
+    return null;
+  },
+
 
 };

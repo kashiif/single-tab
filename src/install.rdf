@@ -3,7 +3,7 @@
 	<Description about="urn:mozilla:install-manifest">
 		<em:id>single-tab@kashiif.com</em:id>
 		<em:type>2</em:type>
-		<em:name>Single Tab</em:name>
+		<em:name>0 Single Tab</em:name>
 		<em:bootstrap>true</em:bootstrap>
 		<em:version>_version_</em:version>
 		<em:creator>Kashif Iqbal Khan</em:creator>

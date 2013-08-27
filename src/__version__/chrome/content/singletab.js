@@ -81,6 +81,9 @@ var singleTab = {
 		// bind gBrowser event
 		var gBrowser = document.getElementById('content');
 		//gBrowser.addEventListener('DOMContentLoaded', singleTab._handleDOMContentLoaded, false);
+    
+    this.overrideHandleLinkClick(window);
+    
 		
 	},
 
@@ -93,6 +96,37 @@ var singleTab = {
 	debug : function (message) {
 	},
 
+  /****************************************** Overrides ****************************************/
+	/*********************************************************************************************/
+  findTabForHref: function(href) {
+    var uri = this.chromeUtils.makeURI(href);
+    return this.xulUtils.findTabForURI(uri);
+  },  
+  
+  // this is for links clicked
+  overrideHandleLinkClick : function(win) {
+    
+    var origHandleLinkClick = win.handleLinkClick;
+    
+    win.handleLinkClick = function handleLinkClick(event, href, linkNode) {
+    
+      if (event.button == 0 || event.button == 1) {
+        
+        var tab = singleTab.findTabForHref(href);
+        singleTab.debug("tab for " + href + ": " + tab);
+        if(tab) {
+          singleTab.debug("Intercepted in handleLinkClick...");
+          selectTab(tab);
+          return true;
+        }
+      }
+      return origHandleLinkClick.apply(this, arguments);
+    };
+
+  },
+
+  
+  
 	/*********************************** Code Stubs **********************************************/
 	/*********************************************************************************************/
 
