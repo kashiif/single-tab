@@ -1,68 +1,123 @@
-"use strict;"
-module.exports = function (grunt) {
-    var distDir = "dist/"
-        tempDir = distDir + "temp/",
-        pkg = grunt.file.readJSON('package.json'),
-        version = pkg.version,
-        versionToken = version.replace(/\./g, '_');
-        
-    // Project configuration.
-    grunt.initConfig({
-        /* Copy all files to destination folder */    
-        copy: {
-            prod: {
-                files: [{
-                    expand: true,
-                    cwd: 'src/',
-                    src: ['**/*.*', '!**/*.txt', '!**/*@*.com', '!**/*sublime*.*'],
-                    dest: tempDir
-                }, {
-                    expand: true,
-                    cwd: tempDir + 'chrome/skin/',
-                    src: ['*icon64.png'],
-                    dest: tempDir
-                }]
-            }
-        },
-        "regex-replace": {
-            prod: {
-                src: [tempDir + '**/*.*'],
-                actions: [{
-                    search: '__version__',
-                    replace: versionToken
-                }, {
-                    search: '_version_',
-                    replace: version
-                }]
-            }            
-        },
-        // generate zip file and use custom extension for the output file
-        compress: {
-          main: {
-            options: {
-              archive: distDir + pkg.name + '-' + version + '.xpi',
-              mode: 'zip'
-            },
-            files: [
-              { expand:true, cwd: tempDir, src: [ '**']}, // includes files and subfolders in 'tempDir' 
-            ]
+"use strict";
+
+/**************************************
+* Author: Kashif Iqbal Khan
+* Email: kashiif@gmail.com
+* License: MIT
+* Copyright (c) 2013 Kashif Iqbal Khan
+**************************************/
+
+module.exports = function(grunt) {
+
+  var path  = require("path");
+
+  var pkg = grunt.file.readJSON("package.json"),
+      srcDir = "src/",  // Path of directory where source code resides
+      distdir = "dist/",
+      tempDir = distdir + "temp/",
+      versionForFileSystem = pkg.version.replace(/\./g, "-");
+
+  // Project configuration.
+  grunt.initConfig({
+	pkg: pkg,
+	
+	clean: {
+		prod: [tempDir, distdir]
+	},
+	
+	// Copy files to tempDir, and only change things in there
+	copy: {
+		common: {
+			files: [
+				{expand: true, cwd: srcDir, src : ["chrome.manifest" ],  dest: tempDir },
+				{expand: true, cwd: srcDir, src : ["**/*.css","**/*.js","**/*.jsm", "**/*.xul", "**/*.png","**/*.jpg"],  dest: tempDir }
+			]
+		},
+		prod: {
+			files: [
+				{expand: true, cwd: srcDir, src : ["**/*.dtd", "**/*.properties", "!**/*_amo_*.dtd"],  dest: tempDir }
+			]
+		},
+		babelzilla: {
+			files: [
+				{expand: true, cwd: srcDir, src : ["**/*.dtd", "**/*.properties", "**/cue_translator.txt"],  dest: tempDir }
+			]
+		}
+	},
+	
+	"string-replace": {
+	  install_rdf: { /* Task to replace tokens in install.rdf */
+      options: {
+        replacements: [
+          {
+            pattern: /\<em\:creator\>.+\<\/em\:creator\>/g,
+            replacement: "<em:creator>" + pkg.author.name + "</em:creator>"
+          },
+          {
+            pattern: /\<em\:homepageURL\>.*\<\/em\:homepageURL\>/g,
+            replacement: "<em:homepageURL>" + pkg.homepage + "</em:homepageURL>"
+          },		  
+          {
+            pattern: /\<em\:description\>.*\<\/em\:description\>/g,
+            replacement: "<em:description>" + pkg.description + "</em:description>"
           }
-        }        
+        ]
+      },
+      src: srcDir + "install.rdf",
+      dest: tempDir + "install.rdf"
+	  },
+	
+	  all_files: { /* Task to replace tokens in all files */
+      options: {
+        replacements: [{
+          pattern: /___version___/g,
+          replacement: pkg.version
+        },
+        {
+          pattern: /__version__/g,
+          replacement: versionForFileSystem
+        }]
+      },
+      files: [
+        {expand: true, cwd: tempDir, src : ["**/*.*", "!**/*.png", "!**/*.jpg", "!**/*.jpeg", "!**/*.gif" ], dest: tempDir }
+      ]
+	  }
+	},
+	
+	compress: { 
+		prod: { 
+			options: {
+			  archive: distdir + pkg.name + "-" + pkg.version + ".xpi",
+			  mode: "zip"
+			},
+			files: [ { expand: true, cwd: tempDir, src: "**/**" }]
+		} 
+	}
+  });
+
+  grunt.loadNpmTasks("grunt-contrib-clean");
+  grunt.loadNpmTasks("grunt-contrib-copy");
+  grunt.loadNpmTasks("grunt-string-replace");
+  grunt.loadNpmTasks("grunt-contrib-compress");
+  
+  // $: grunt bump
+  grunt.loadNpmTasks("grunt-bump");
+
+
+  grunt.registerTask("renameVersionDir", "renames the __version__ directory", function() {
+      var fs    = require("fs");
+
+      var oldName = path.resolve(path.join(tempDir, "__version__")),
+            newName = path.resolve(path.join(tempDir, versionForFileSystem));
+ 
+      if (fs.existsSync(oldName)) {
+        fs.renameSync(oldName, newName);
+      }
+
     });
 
-    grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.loadNpmTasks('grunt-regex-replace');
-    grunt.loadNpmTasks('grunt-contrib-compress');
-
-    grunt.registerTask('renameVersionDir', 'renames the __version__ directory', function() {
-        var fs    = require('fs'),
-            path  = require('path');
-
-        var oldName = path.resolve(tempDir, '__version__'),
-              newName = path.resolve(tempDir, versionToken);
-          fs.renameSync(oldName, newName);
-      });
-
-    // Default task(s).
-    grunt.registerTask('default', ['copy', 'regex-replace', 'renameVersionDir', 'compress']);
+  // Default task(s).
+  grunt.registerTask("default", ["clean", "copy:common", "copy:prod", "string-replace", "renameVersionDir", "compress"]);
+  grunt.registerTask("babelzilla", ["clean", "copy:common", "copy:babelzilla", "string-replace", "renameVersionDir", "compress"]);
+  
 };
