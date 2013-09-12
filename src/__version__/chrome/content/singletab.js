@@ -48,7 +48,7 @@ var singleTab = {
   */
 	uninit: function() {
     this.debug('Uninit called. Extension is either disabled or uninstalled.');
-
+    
     // unloadCommonJsm comes from common.jsm module
     this.unloadCommonJsm();
 
@@ -63,6 +63,8 @@ var singleTab = {
 	unbind : function (window) {
 		var document = window.document;
 	
+    this._restoreOriginalFunctions(window);
+
 		// unbind gBrowser  event
 		var gBrowser = document.getElementById('content');
 	
@@ -102,11 +104,11 @@ var singleTab = {
     var uri = this.chromeUtils.makeURI(href);
     return this.xulUtils.findTabForURI(uri);
   },  
-  
+
   // this is for links clicked
   overrideHandleLinkClick : function(win) {
     
-    var origHandleLinkClick = win.handleLinkClick;
+    win.handleLinkClickOriginal = win.handleLinkClick;
     
     win.handleLinkClick = function handleLinkClick(event, href, linkNode) {
     
@@ -116,15 +118,73 @@ var singleTab = {
         singleTab.debug("tab for " + href + ": " + tab);
         if(tab) {
           singleTab.debug("Intercepted in handleLinkClick...");
-          selectTab(tab);
+          singleTab.selectTab(tab);
           return true;
         }
       }
-      return origHandleLinkClick.apply(this, arguments);
+      return win.handleLinkClickOriginal.apply(this, arguments);
     };
 
   },
+  
+  
+  // right-click "open link in new window"
+  overrideOpenLink : function(win) {
 
+    win.nsContextMenu.prototype.openLinkOriginal = win.nsContextMenu.prototype.openLink;
+
+    win.nsContextMenu.prototype.openLink = function() {
+      singleTab.debug("overridden openLink...");
+      var tab = singleTab.findTabForHref(this.linkURI);
+      if(tab) {
+        singleTab.debug("Intercepted in openLink...");
+        singleTab.selectTab(tab);
+      } else {
+        var w = this.ownerDocument.defaultView;
+        w.nsContextMenu.openLinkOriginal(arguments);
+      }
+    };
+  },
+
+  // right-click "open link in new tab"
+  overrideOpenLinkInTab : function(win) {
+    
+    win.nsContextMenu.prototype.openLinkInTabOriginal = win.nsContextMenu.prototype.openLinkInTab;
+
+    win.nsContextMenu.prototype.openLinkInTab = function() {
+      singleTab.debug("overridden openLinkInTab...");
+      var tab = singleTab.findTabForHref(this.linkURI);
+      if(tab) {
+        singleTab.debug("Intercepted in openLinkInTab...");
+        singleTab.selectTab(tab);
+      } else {
+        var w = this.ownerDocument.defaultView;
+        w.nsContextMenu.openLinkInTabOriginal(arguments);
+      }
+    };
+  },
+  
+  _restoreOriginalFunctions: function(win) {
+    win.handleLinkClick = win.handleLinkClickOriginal;
+    win.handleLinkClickOriginal = null;
+    
+    win.nsContextMenu.prototype.openLink = win.nsContextMenu.prototype.openLinkOriginal;
+    win.nsContextMenu.prototype.openLinkOriginal = null;
+    
+    win.nsContextMenu.prototype.openLinkInTab = win.nsContextMenu.prototype.openLinkInTabOriginal;
+    win.nsContextMenu.prototype.openLinkInTabOriginal = null;
+  },
+
+  selectTab: function(tab) {
+    var win = tab.ownerDocument.defaultView;
+    // focus tab and containing window
+    win.getBrowser().selectedTab = tab;
+
+    // TODO: replace window with active window check
+    if(win != window) {
+      setTimeout(function(){win.focus();}, 50); //async because sync wasn't working all the time
+    }
+  },
   
   
 	/*********************************** Code Stubs **********************************************/

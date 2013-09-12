@@ -5,7 +5,7 @@
 		<em:type>2</em:type>
 		<em:name>0 Single Tab</em:name>
 		<em:bootstrap>true</em:bootstrap>
-		<em:version>_version_</em:version>
+		<em:version>___version___</em:version>
 		<em:creator>Kashif Iqbal Khan</em:creator>
 		<em:homepageURL></em:homepageURL>
 		<em:description>Allow only one tab for each url</em:description>

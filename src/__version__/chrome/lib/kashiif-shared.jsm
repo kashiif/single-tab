@@ -434,8 +434,10 @@ var xulUtils = {
           
           Cu.reportError("checking " + (tabURI == linkURI)  + " " + tabURI );
           //TODO: see if there is a pound symbol
-          if(tabURI && tabURI == linkURI) {
-            return tab;
+          if(tabURI) {
+            if (tabURI.spec == linkURI.spec) {
+              return tab;
+            }
           }
         }
       } catch(e) {
