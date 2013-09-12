@@ -432,7 +432,7 @@ var xulUtils = {
           tab = browser.mTabs[j],
           tabURI = tab.linkedBrowser.currentURI;
           
-          Cu.reportError("checking " + (tabURI == linkURI)  + " " + tabURI );
+          //Cu.reportError("checking " + (tabURI == linkURI)  + " " + tabURI );
           //TODO: see if there is a pound symbol
           if(tabURI) {
             if (tabURI.spec == linkURI.spec) {

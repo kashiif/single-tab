@@ -57,10 +57,12 @@ var singleTab = {
   },
 
 	bind: function (window) {
+    this.debug("bind");
 		window.setTimeout(function() { singleTab._handleLoad(window); }, 500);		
 	},
 	
 	unbind : function (window) {
+    this.debug("unbind");
 		var document = window.document;
 	
     this._restoreOriginalFunctions(window);
@@ -75,6 +77,7 @@ var singleTab = {
   * The delayed load handler for the windows
   */
 	_handleLoad: function (window) {
+    this.debug("_handleLoad");
 		var document = window.document;
 
 		// bind window event
@@ -85,8 +88,8 @@ var singleTab = {
 		//gBrowser.addEventListener('DOMContentLoaded', singleTab._handleDOMContentLoaded, false);
     
     this.overrideHandleLinkClick(window);
-    
-		
+    this.overrideOpenLink(window);
+    this.overrideOpenLinkInTab(window);
 	},
 
   handlePrefChanged: function(prefName, newValue) {
@@ -105,6 +108,16 @@ var singleTab = {
     return this.xulUtils.findTabForURI(uri);
   },  
 
+  _switchToTab: function(aUri) {
+    var tab = this.xulUtils.findTabForURI(aUri);
+    if(tab) {
+      singleTab.selectTab(tab);
+      return true;
+    }
+    
+    return false;
+  },
+
   // this is for links clicked
   overrideHandleLinkClick : function(win) {
     
@@ -113,12 +126,9 @@ var singleTab = {
     win.handleLinkClick = function handleLinkClick(event, href, linkNode) {
     
       if (event.button == 0 || event.button == 1) {
-        
-        var tab = singleTab.findTabForHref(href);
-        singleTab.debug("tab for " + href + ": " + tab);
-        if(tab) {
-          singleTab.debug("Intercepted in handleLinkClick...");
-          singleTab.selectTab(tab);
+        var aUri = singleTab.chromeUtils.makeURI(href)
+        var success = singleTab._switchToTab(aUri);
+        if(success) {
           return true;
         }
       }
@@ -127,7 +137,19 @@ var singleTab = {
 
   },
   
-  
+  // right-click "open link in new tab"
+  overrideOpenLinkInTab : function(win) {    
+    //singleTab.debug("setting custom openLinkInTab: " + win.nsContextMenu.prototype.openLinkInTab);
+    win.nsContextMenu.prototype.openLinkInTabOriginal = win.nsContextMenu.prototype.openLinkInTab;
+
+    win.nsContextMenu.prototype.openLinkInTab = function() {
+      var success = singleTab._switchToTab(this.linkURI);
+      if(!success) {
+        win.nsContextMenu.prototype.openLinkInTabOriginal.apply(this, arguments);
+      }
+    };
+  },
+    
   // right-click "open link in new window"
   overrideOpenLink : function(win) {
 
@@ -135,35 +157,13 @@ var singleTab = {
 
     win.nsContextMenu.prototype.openLink = function() {
       singleTab.debug("overridden openLink...");
-      var tab = singleTab.findTabForHref(this.linkURI);
-      if(tab) {
-        singleTab.debug("Intercepted in openLink...");
-        singleTab.selectTab(tab);
-      } else {
-        var w = this.ownerDocument.defaultView;
-        w.nsContextMenu.openLinkOriginal(arguments);
+      var success = singleTab._switchToTab(this.linkURI);
+      if(!success) {
+        win.nsContextMenu.prototype.openLinkOriginal.apply(this, arguments);
       }
     };
   },
 
-  // right-click "open link in new tab"
-  overrideOpenLinkInTab : function(win) {
-    
-    win.nsContextMenu.prototype.openLinkInTabOriginal = win.nsContextMenu.prototype.openLinkInTab;
-
-    win.nsContextMenu.prototype.openLinkInTab = function() {
-      singleTab.debug("overridden openLinkInTab...");
-      var tab = singleTab.findTabForHref(this.linkURI);
-      if(tab) {
-        singleTab.debug("Intercepted in openLinkInTab...");
-        singleTab.selectTab(tab);
-      } else {
-        var w = this.ownerDocument.defaultView;
-        w.nsContextMenu.openLinkInTabOriginal(arguments);
-      }
-    };
-  },
-  
   _restoreOriginalFunctions: function(win) {
     win.handleLinkClick = win.handleLinkClickOriginal;
     win.handleLinkClickOriginal = null;
@@ -171,6 +171,7 @@ var singleTab = {
     win.nsContextMenu.prototype.openLink = win.nsContextMenu.prototype.openLinkOriginal;
     win.nsContextMenu.prototype.openLinkOriginal = null;
     
+    singleTab.debug("restoring openLinkInTab: " + win.nsContextMenu.prototype.openLinkInTabOriginal);
     win.nsContextMenu.prototype.openLinkInTab = win.nsContextMenu.prototype.openLinkInTabOriginal;
     win.nsContextMenu.prototype.openLinkInTabOriginal = null;
   },
