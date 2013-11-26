@@ -65,11 +65,10 @@ var singleTab = {
     this.debug("unbind");
 		var document = window.document;
 	
-    this._restoreOriginalFunctions(window);
+    // unbind gBrowser  event
+    var gBrowser = document.getElementById('content');
 
-		// unbind gBrowser  event
-		var gBrowser = document.getElementById('content');
-	
+    this._restoreOriginalFunctions(window, gBrowser);
 	
 	},
 
@@ -89,7 +88,8 @@ var singleTab = {
     
     this.overrideHandleLinkClick(window);
     this.overrideOpenLink(window);
-    this.overrideOpenLinkInTab(window);
+    //this.overrideOpenLinkInTab(window);
+    this.overrideAddTab(gBrowser);
 	},
 
   handlePrefChanged: function(prefName, newValue) {
@@ -118,6 +118,28 @@ var singleTab = {
     return false;
   },
 
+  overrideAddTab : function (gBrowser) {
+    gBrowser.addTabCopyBySingleTab = gBrowser.addTab;
+
+    gBrowser.addTab = function( aURI,
+                                aReferrerURI,
+                                aCharset,
+                                aPostData,
+                                aOwner,
+                                aAllowThirdPartyFixup) {
+
+      var tab = singleTab.findTabForHref(aURI);
+      singleTab.debug("gBrowser.addTab: " + tab + " " + aURI);
+
+      if(tab) {
+        singleTab.selectTab(tab);
+        return tab;
+      }
+
+      return gBrowser.addTabCopyBySingleTab.apply(this, arguments);
+    }
+  },
+
   // this is for links clicked
   overrideHandleLinkClick : function(win) {
     
@@ -128,7 +150,9 @@ var singleTab = {
       if (event.button == 0 || event.button == 1) {
         var aUri = singleTab.chromeUtils.makeURI(href)
         var success = singleTab._switchToTab(aUri);
+        singleTab.debug("handleLinkClick: " + success);
         if(success) {
+          event.preventDefault();
           return true;
         }
       }
@@ -164,16 +188,22 @@ var singleTab = {
     };
   },
 
-  _restoreOriginalFunctions: function(win) {
+  _restoreOriginalFunctions: function(win, gBrowser) {
     win.handleLinkClick = win.handleLinkClickOriginal;
     win.handleLinkClickOriginal = null;
     
     win.nsContextMenu.prototype.openLink = win.nsContextMenu.prototype.openLinkOriginal;
     win.nsContextMenu.prototype.openLinkOriginal = null;
     
+    /*
     singleTab.debug("restoring openLinkInTab: " + win.nsContextMenu.prototype.openLinkInTabOriginal);
     win.nsContextMenu.prototype.openLinkInTab = win.nsContextMenu.prototype.openLinkInTabOriginal;
     win.nsContextMenu.prototype.openLinkInTabOriginal = null;
+    */
+
+
+    gBrowser.addTab = gBrowser.addTabCopyBySingleTab;
+    gBrowser.addTabCopyBySingleTab = null;
   },
 
   selectTab: function(tab) {
@@ -181,9 +211,8 @@ var singleTab = {
     // focus tab and containing window
     win.getBrowser().selectedTab = tab;
 
-    // TODO: replace window with active window check
-    if(win != window) {
-      setTimeout(function(){win.focus();}, 50); //async because sync wasn't working all the time
+    if(win != this.xulUtils.getWindow()) {
+      win.setTimeout(function(){win.focus();}, 50); //async because sync doesn't work all the time
     }
   },
   
