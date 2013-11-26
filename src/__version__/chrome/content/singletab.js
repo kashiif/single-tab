@@ -87,9 +87,10 @@ var singleTab = {
 		//gBrowser.addEventListener('DOMContentLoaded', singleTab._handleDOMContentLoaded, false);
     
     this.overrideHandleLinkClick(window);
-    this.overrideOpenLink(window);
+    //this.overrideOpenLink(window);
     //this.overrideOpenLinkInTab(window);
     this.overrideAddTab(gBrowser);
+    this.overrideOpenDialog(window, gBrowser);
 	},
 
   handlePrefChanged: function(prefName, newValue) {
@@ -118,6 +119,8 @@ var singleTab = {
     return false;
   },
 
+  // Most of the functions us AddTab to open a new tab, e.g. bookmarks or histroy items
+  // Open in New Tab
   overrideAddTab : function (gBrowser) {
     gBrowser.addTabCopyBySingleTab = gBrowser.addTab;
 
@@ -138,6 +141,25 @@ var singleTab = {
 
       return gBrowser.addTabCopyBySingleTab.apply(this, arguments);
     }
+  },
+
+  overrideOpenDialog : function (window, gBrowser) {
+    singleTab.debug("overriding window.overrideOpenDialog");
+
+    window.openLinkInCopyBySingleTab = window.openLinkIn;
+    window.openLinkIn = function(url, where) {
+        if (where == "window") {
+          var tab = singleTab.findTabForHref( url );
+          singleTab.debug("window.openLinkInCopyBySingleTab: " + tab + " " + url);
+
+          if(tab) {
+            singleTab.selectTab(tab);
+            return tab.ownerDocument.defaultView;
+          }
+        }
+
+        return window.openLinkInCopyBySingleTab.apply(this, arguments);
+      };
   },
 
   // this is for links clicked
@@ -161,6 +183,7 @@ var singleTab = {
 
   },
   
+  /*
   // right-click "open link in new tab"
   overrideOpenLinkInTab : function(win) {    
     //singleTab.debug("setting custom openLinkInTab: " + win.nsContextMenu.prototype.openLinkInTab);
@@ -187,15 +210,16 @@ var singleTab = {
       }
     };
   },
+  */
 
   _restoreOriginalFunctions: function(win, gBrowser) {
     win.handleLinkClick = win.handleLinkClickOriginal;
     win.handleLinkClickOriginal = null;
     
+    /*
     win.nsContextMenu.prototype.openLink = win.nsContextMenu.prototype.openLinkOriginal;
     win.nsContextMenu.prototype.openLinkOriginal = null;
     
-    /*
     singleTab.debug("restoring openLinkInTab: " + win.nsContextMenu.prototype.openLinkInTabOriginal);
     win.nsContextMenu.prototype.openLinkInTab = win.nsContextMenu.prototype.openLinkInTabOriginal;
     win.nsContextMenu.prototype.openLinkInTabOriginal = null;
@@ -204,6 +228,10 @@ var singleTab = {
 
     gBrowser.addTab = gBrowser.addTabCopyBySingleTab;
     gBrowser.addTabCopyBySingleTab = null;
+
+    win.openLinkIn = win.openLinkInCopyBySingleTab;
+    win.openLinkInCopyBySingleTab = null;
+
   },
 
   selectTab: function(tab) {
