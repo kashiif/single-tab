@@ -131,12 +131,15 @@ var singleTab = {
                                 aOwner,
                                 aAllowThirdPartyFixup) {
 
-      var tab = singleTab.findTabForHref(aURI);
-      singleTab.debug("gBrowser.addTab: " + tab + " " + aURI);
+      // When UndoCloseTab, aURI is ""
+      if (aURI) {
+        var tab = singleTab.findTabForHref(aURI);
+        singleTab.debug("gBrowser.addTab: " + tab + " " + aURI);
 
-      if(tab) {
-        singleTab.selectTab(tab);
-        return tab;
+        if(tab) {
+          singleTab.selectTab(tab);
+          return tab;
+        }
       }
 
       return gBrowser.addTabCopyBySingleTab.apply(this, arguments);

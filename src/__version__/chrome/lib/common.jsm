@@ -5,14 +5,18 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 
+// @ifdef PrefManager
 Cu.import('resource://single-tab/__version__/chrome/lib/prefmanager.jsm');
 
 PrefManager.init('extensions.singletab.', 'resource://single-tab/__version__/defaults/preferences/defaults.js');
 
 var _prefManager = PrefManager;
+// @endif
 
 var unloadCommonJsm = function() {
+// @ifdef PrefManager
   Cu.unload('resource://single-tab/__version__/chrome/lib/prefmanager.jsm');  
+// @endif
 };
 
 
